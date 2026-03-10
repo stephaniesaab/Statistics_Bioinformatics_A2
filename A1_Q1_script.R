@@ -98,8 +98,6 @@ plot(var_explained,
 
 ####PCA Plots####
 #####Prepare PCA Data#####
-pca_result <- prcomp(a1data, scale. = TRUE)
-
 sample_pca <- data.frame(
   PC1 = pca_result$x[,1],
   PC2 = pca_result$x[,2],
@@ -128,3 +126,11 @@ ggplot(gene_pca, aes(PC1, PC2)) +
   labs(title = "PCA of Genes (Loadings)",
        x = "PC1",
        y = "PC2")
+
+#####Label top contributing genes in the PCA#####
+top_genes <- gene_pca[order(abs(gene_pca$PC1), decreasing = TRUE)[1:10],]
+
+ggplot(gene_pca, aes(PC1, PC2)) +
+  geom_point(color="grey") +
+  geom_text(data=top_genes, aes(label=Gene), color="red") +
+  theme_minimal()
