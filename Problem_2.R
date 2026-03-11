@@ -23,7 +23,7 @@ set.seed(1717)  # For reproducibility
 
 ### Restructure Data
 
-covid_dataset <- read_excel("//wsl.localhost/Ubuntu-24.04/home/saabstep/binf_class_6970/Statistics_Bioinformatics_A2/Immunologic profiles of patients with COVID-19.xlsx")
+covid_dataset <- read_excel("Immunologic profiles of patients with COVID-19.xlsx")
 covid_dataset <- rename(covid_dataset, Severity = Severirty)
 
 
@@ -63,6 +63,7 @@ alpha_grid <- seq(0, 1, by = 0.01)
 results_cv10 <- data.frame()
 results_cv20 <- data.frame()
 
+#Need to use type.measure = "deviance" because not enough results for auc
 # Perform grid search for CV = 10 fold ====
 for (alpha_val in alpha_grid) {
   set.seed(1717)
@@ -97,7 +98,8 @@ for (alpha_val in alpha_grid) {
                         type.measure = "deviance",
                         keep = TRUE,
                         family = "binomial", #Severity is either mild or severe
-                        standardize = TRUE)
+                        standardize = TRUE,
+                        grouped = FALSE) #Adding grouped = FALSE removes warnings for CV20 because it creates an error matrix at the observation level of all folds to summarize results
   
   # Store results
   results_cv20 <- rbind(results_cv20, data.frame(
@@ -126,6 +128,8 @@ best_alpha_1se20 <- results_cv20$alpha[which.min(results_cv20$cvm_1se)]
 cat("\nBest alpha (lambda.min):", best_alpha_min10, "\n")
 cat("Best alpha (lambda.1se):", best_alpha_1se10, "\n")
 
+
+
 # Visualize alpha grid search - CV10
 ggplot(results_cv10, aes(x = alpha)) +
   geom_line(aes(y = cvm_min, color = "lambda.min"), size = 1.2) +
@@ -134,7 +138,7 @@ ggplot(results_cv10, aes(x = alpha)) +
   geom_point(aes(y = cvm_1se, color = "lambda.1se"), size = 3) +
   labs(title = "CV Error vs Alpha (10 fold)",
        x = "Alpha (0=Ridge, 1=Lasso)",
-       y = "CV Error (MSE)",
+       y = "CV Error (binomial deviance)",
        color = "Lambda Type") +
   theme_minimal()
 
@@ -146,7 +150,7 @@ ggplot(results_cv20, aes(x = alpha)) +
   geom_point(aes(y = cvm_1se, color = "lambda.1se"), size = 3) +
   labs(title = "CV Error vs Alpha (20 fold)",
        x = "Alpha (0=Ridge, 1=Lasso)",
-       y = "CV Error (MSE)",
+       y = "CV Error (binomial deviance)",
        color = "Lambda Type") +
   theme_minimal()
 
