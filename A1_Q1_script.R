@@ -131,6 +131,8 @@ ggplot(gene_pca, aes(PC1, PC2)) +
 top_genes <- gene_pca[order(abs(gene_pca$PC1), decreasing = TRUE)[1:10],]
 
 ggplot(gene_pca, aes(PC1, PC2)) +
-  geom_point(color="grey") +
+  geom_point(color="blue") +
   geom_text(data=top_genes, aes(label=Gene), color="red") +
-  theme_minimal()
+  theme_minimal() +
+  labs(title = "PCA of Top contributing genes")
+
