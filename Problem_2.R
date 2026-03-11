@@ -125,10 +125,12 @@ best_alpha_min20 <- results_cv20$alpha[which.min(results_cv20$cvm_min)]
 best_alpha_1se20 <- results_cv20$alpha[which.min(results_cv20$cvm_1se)]
 
 #Best alpha for CV 10
-cat("\nBest alpha (lambda.min):", best_alpha_min10, "\n")
-cat("Best alpha (lambda.1se):", best_alpha_1se10, "\n")
+cat("\nBest alpha CV10 (lambda.min):", best_alpha_min10, "\n")
+cat("Best alpha CV10 (lambda.1se):", best_alpha_1se10, "\n")
 
-
+#Best alpha for CV 20
+cat("\nBest alpha CV20 (lambda.min):", best_alpha_min20, "\n")
+cat("Best alpha CV20 (lambda.1se):", best_alpha_1se20, "\n")
 
 # Visualize alpha grid search - CV10
 ggplot(results_cv10, aes(x = alpha)) +
@@ -154,20 +156,83 @@ ggplot(results_cv20, aes(x = alpha)) +
        color = "Lambda Type") +
   theme_minimal()
 
-# how many predictor left? ====
-# Extract lambda values
-enet_lambda_min <- cv_enet$lambda.min
-enet_lambda_1se <- cv_enet$lambda.1se
+par(mfrow = c(1,2))
+plot(results_cv10$alpha, results_cv10$cvm_min,
+     main = "CV10: Error vs Alpha",
+     xlab = "Alpha", ylab = "CV Error",
+     type = "l")
+abline(v = best_alpha_min10, col = "red", lty = 2)
 
-cat("Elastic Net - Lambda min:", enet_lambda_min, "\n")
-cat("Elastic Net - Lambda 1se:", enet_lambda_1se, "\n")
+plot(results_cv20$alpha, results_cv20$cvm_min,
+     main = "CV20: Error vs Alpha",
+     xlab = "Alpha", ylab = "CV Error",
+     type = "l")
+abline(v = best_alpha_min20, col = "red", lty = 2)
+par(mfrow = c(1,1))
+
+# Comparing CV10 and CV20 schemes  
+# need one representative model from each sceheme 
+# decided on lambda.min instead of lambda.1se, as it keeps more predictors and prioritizes accuracy over simplicity 
+
+# Extract lambda values
+best_row_cv10 <- which.min(results_cv10$cvm_min)
+best_lambda_cv10 <- results_cv10$lambda_min[best_row_cv10]
+
+best_row_cv20 <- which.min(results_cv20$cvm_min)
+best_lambda_cv20 <- results_cv20$lambda_min[best_row_cv20]
+
+cat("Best lambda (CV10):", best_lambda_cv10, "\n")
+cat("Best alpha (CV10):", best_alpha_min10, "\n")
+cat("CV10 error:", min(results_cv10$cvm_min), "\n")
+cat("CV10 - Non-zero coefficients:", 
+    results_cv10$nzero_min[which.min(results_cv10$cvm_min)], "\n")
+
+cat("Best lambda (CV20):", best_lambda_cv20, "\n")
+cat("Best alpha (CV20):", best_alpha_min20, "\n")
+cat("CV20 error:", min(results_cv20$cvm_min), "\n")
+cat("CV20 - Non-zero coefficients:", 
+    results_cv20$nzero_min[which.min(results_cv20$cvm_min)], "\n")
 
 # Fit final models
-enet_model_min <- glmnet(X_train_scaled, y_train, 
-                         alpha = 0.5, 
-                         lambda = enet_lambda_min)
+enet_cv10_model_min <- glmnet(predictors_train, response_train,
+                              family = "binomial",
+                              alpha = best_alpha_min10,
+                              lambda = best_lambda_cv10)
+enet_cv20_model_min <- glmnet(predictors_train, response_train,
+                              family = "binomial",
+                              alpha = best_alpha_min20,
+                              lambda = best_lambda_cv20)
 
-enet_model_1se <- glmnet(X_train_scaled, y_train, 
-                         alpha = 0.5, 
-                         lambda = enet_lambda_1se)
 
+# CV10 predictions
+prds.train.cv10 <- predict(enet_cv10_model_min, newx = predictors_train,
+                           type = "response")[,1]
+prds.test.cv10 <- predict(enet_cv10_model_min, newx = predictors_test,
+                          type = "response")[,1]
+
+# CV20 predictions
+prds.train.cv20 <- predict(enet_cv20_model_min, newx = predictors_train,
+                           type = "response")[,1]
+prds.test.cv20 <- predict(enet_cv20_model_min, newx = predictors_test,
+                          type = "response")[,1]
+
+
+# ROC curves and AUC
+auc.train.cv10 <- roc(response_train, prds.train.cv10)
+auc.test.cv10 <- roc(response_test, prds.test.cv10)
+auc.train.cv20 <- roc(response_train, prds.train.cv20)
+auc.test.cv20 <- roc(response_test, prds.test.cv20)
+
+par(mfrow = c(2,2))
+plot(auc.train.cv10, main = "CV10 - Train")
+plot(auc.test.cv10, main = "CV10 - Test")
+plot(auc.train.cv20, main = "CV20 - Train")
+plot(auc.test.cv20, main = "CV20 - Test")
+par(mfrow = c(1,1))
+
+cat("=== AUC Values ===\n")
+cat("CV10 - Train AUC:", auc(auc.train.cv10), "\n")
+cat("CV10 - Test AUC:", auc(auc.test.cv10), "\n")
+cat("CV20 - Train AUC:", auc(auc.train.cv20), "\n")
+cat("CV20 - Test AUC:", auc(auc.test.cv20), "\n")
+ #adding random line 
