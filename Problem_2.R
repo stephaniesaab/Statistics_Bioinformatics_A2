@@ -1,6 +1,8 @@
 #TO DO:
 # DO some EDA
 #Do we need to do quadratic effects?
+#Get coefficients for most impactful cytokines
+#How does Age affect this
 # ======
 
 # Load necessary libraries ====
@@ -117,7 +119,7 @@ for (alpha_val in alpha_grid) {
 print(results_cv10)
 print(results_cv20)
 
-# Find best alpha based on minimum CV error
+# Find best alpha based on minimum CV error ====
 best_alpha_min10 <- results_cv10$alpha[which.min(results_cv10$cvm_min)]
 best_alpha_1se10 <- results_cv10$alpha[which.min(results_cv10$cvm_1se)]
 
@@ -132,7 +134,7 @@ cat("Best alpha CV10 (lambda.1se):", best_alpha_1se10, "\n")
 cat("\nBest alpha CV20 (lambda.min):", best_alpha_min20, "\n")
 cat("Best alpha CV20 (lambda.1se):", best_alpha_1se20, "\n")
 
-# Visualize alpha grid search - CV10
+# Visualize alpha grid search - CV10 ====
 ggplot(results_cv10, aes(x = alpha)) +
   geom_line(aes(y = cvm_min, color = "lambda.min"), size = 1.2) +
   geom_line(aes(y = cvm_1se, color = "lambda.1se"), size = 1.2) +
@@ -144,7 +146,7 @@ ggplot(results_cv10, aes(x = alpha)) +
        color = "Lambda Type") +
   theme_minimal()
 
-# Visualize alpha grid search - CV20
+# Visualize alpha grid search - CV20 ====
 ggplot(results_cv20, aes(x = alpha)) +
   geom_line(aes(y = cvm_min, color = "lambda.min"), size = 1.2) +
   geom_line(aes(y = cvm_1se, color = "lambda.1se"), size = 1.2) +
@@ -170,11 +172,11 @@ plot(results_cv20$alpha, results_cv20$cvm_min,
 abline(v = best_alpha_min20, col = "red", lty = 2)
 par(mfrow = c(1,1))
 
-# Comparing CV10 and CV20 schemes  
-# need one representative model from each sceheme 
+# Comparing CV10 and CV20 schemes ====
+# need one representative model from each scheme 
 # decided on lambda.min instead of lambda.1se, as it keeps more predictors and prioritizes accuracy over simplicity 
 
-# Extract lambda values
+# Extract lambda values ====
 best_row_cv10 <- which.min(results_cv10$cvm_min)
 best_lambda_cv10 <- results_cv10$lambda_min[best_row_cv10]
 
@@ -193,31 +195,49 @@ cat("CV20 error:", min(results_cv20$cvm_min), "\n")
 cat("CV20 - Non-zero coefficients:", 
     results_cv20$nzero_min[which.min(results_cv20$cvm_min)], "\n")
 
-# Fit final models
+# Fit final models ====
 enet_cv10_model_min <- glmnet(predictors_train, response_train,
                               family = "binomial",
                               alpha = best_alpha_min10,
-                              lambda = best_lambda_cv10)
+                              lambda = best_lambda_cv10,
+                              standardize = TRUE)
 enet_cv20_model_min <- glmnet(predictors_train, response_train,
                               family = "binomial",
                               alpha = best_alpha_min20,
-                              lambda = best_lambda_cv20)
+                              lambda = best_lambda_cv20,
+                              standardize = TRUE)
+# Variable selection ====
+#Get coefficients
+coef_cv10 <- coef(enet_cv10_model_min)
+coef_cv20 <- coef(enet_cv20_model_min)
 
+#Get important cytokines for prediction
+imp_cyt_cv10 <- which(coef_cv10 != 0)
+imp_cyt_cv20 <- which(coef_cv20 != 0)
+# Get names of variables
+var_cv10 <- row.names(coef_cv10)[imp_cyt_cv10][-(1:2)] #Remove the age and intercept
+var_cv20 <- row.names(coef_cv20)[imp_cyt_cv20][-(1:2)] #Remove the age and intercept
 
-# CV10 predictions
+#List the cytokines effective for predicting COVID severity
+print(var_cv10)
+print(var_cv20)
+
+#Which cytokines show a significant association with COVID severity?
+
+# CV10 predictions ====
 prds.train.cv10 <- predict(enet_cv10_model_min, newx = predictors_train,
                            type = "response")[,1]
 prds.test.cv10 <- predict(enet_cv10_model_min, newx = predictors_test,
                           type = "response")[,1]
 
-# CV20 predictions
+# CV20 predictions ====
 prds.train.cv20 <- predict(enet_cv20_model_min, newx = predictors_train,
                            type = "response")[,1]
 prds.test.cv20 <- predict(enet_cv20_model_min, newx = predictors_test,
                           type = "response")[,1]
 
 
-# ROC curves and AUC
+# ROC curves and AUC ====
 auc.train.cv10 <- roc(response_train, prds.train.cv10)
 auc.test.cv10 <- roc(response_test, prds.test.cv10)
 auc.train.cv20 <- roc(response_train, prds.train.cv20)
@@ -235,4 +255,23 @@ cat("CV10 - Train AUC:", auc(auc.train.cv10), "\n")
 cat("CV10 - Test AUC:", auc(auc.test.cv10), "\n")
 cat("CV20 - Train AUC:", auc(auc.train.cv20), "\n")
 cat("CV20 - Test AUC:", auc(auc.test.cv20), "\n")
- #adding random line 
+
+# Variable selection after sensitivity and specificity classification ====
+#Get coefficients
+coef_cv10 <- coef(enet_cv10_model_min)
+coef_cv20 <- coef(enet_cv20_model_min)
+
+#Get important cytokines for prediction
+imp_cyt_cv10 <- which(coef_cv10 != 0)
+imp_cyt_cv20 <- which(coef_cv20 != 0)
+# Get names of variables
+var_cv10 <- row.names(coef_cv10)[imp_cyt_cv10][-(1:2)] #Remove the age and intercept
+var_cv20 <- row.names(coef_cv20)[imp_cyt_cv20][-(1:2)] #Remove the age and intercept
+
+#List the cytokines effective for predicting COVID severity
+print(var_cv10)
+print(var_cv20)
+
+#Which cytokines show a significant association with COVID severity?
+
+
