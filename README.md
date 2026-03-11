@@ -1,7 +1,7 @@
 # Statistics_Bioinformatics_A2
 Assignment 2 for Statistics for Bioinformatics
 
-Question 1.
+### Question 1.
 Principal component analysis (PCA) was performed on the gene expression dataset containing measurements for the 156 most differentially expressed genes across T cell samples. PCA
 reduces the dimensionality of the dataset while preserving the major sources of variation in gene expression.
 
@@ -34,3 +34,4 @@ greater role in driving the observed variation among samples. Based on the previ
 <img width="1000" height="500" alt="q1 p6" src="https://github.com/user-attachments/assets/224804bd-24b8-4160-bf66-3c0dd5ccdfbb" />
 
 The results of the statistical analysis replicate and support the paper’s conclusion that memory T cells represent a transitional transcriptional state, providing strong evidence for a **parallel differentiation model** in which naïve cells give rise to both effector and memory populations through a shared intermediate state.
+
