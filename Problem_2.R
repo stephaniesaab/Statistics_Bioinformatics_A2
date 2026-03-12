@@ -26,7 +26,6 @@ set.seed(1717)  # For reproducibility
 covid_dataset <- read_excel("Immunologic profiles of patients with COVID-19.xlsx")
 covid_dataset <- rename(covid_dataset, Severity = Severirty)
 
-
 ## Remove missing values
 missing_vals_index <- which(!complete.cases((covid_dataset)))
 missing_vals_index #Integer(0) so there are no missing values
@@ -44,7 +43,7 @@ cat("Dataset dimensions:", dim(covid_dataset), "\n")
 cat("Number of predictors:", ncol(covid_predictors), "\n")
 cat("Number of observations:", length(covid_response), "\n")
 
-#Splitting the data into training (75%) and testing (25%)
+#Splitting the data into training (75%) and testing (25%) - using stratified sampling 
 train_index <- createDataPartition(covid_response, p = 0.75, list = FALSE)
 predictors_train <- covid_predictors[train_index, ]
 predictors_test <- covid_predictors[-train_index, ]
@@ -235,6 +234,13 @@ cat("CV10 - Test AUC:", auc(auc.test.cv10), "\n")
 cat("CV20 - Train AUC:", auc(auc.train.cv20), "\n")
 cat("CV20 - Test AUC:", auc(auc.test.cv20), "\n")
 
+ci.auc(auc.test.cv10)
+ci.auc(auc.test.cv20)
+
+# High correlation means both models are making similar predictions despite different CV schemes
+cat("=== Correlation between CV10 and CV20 test predictions ===\n") 
+cor.test(prds.test.cv10, prds.test.cv20) 
+
 # Calculate optimal classification threshold using min-max approach ====
 # Finds threshold that maximises the minimum of sensitivity and specificity
 snsp.train.cv10 <- cbind(auc.train.cv10$sensitivities, auc.train.cv10$specificities)
@@ -252,7 +258,6 @@ cutoff.train.cv20 <- auc.train.cv20$thresholds[indx.cv20]
 snsp.test.cv20 <- cbind(auc.test.cv20$sensitivities, auc.test.cv20$specificities)
 indx.cv20.test <- which.max(apply(snsp.test.cv20, 1, min))
 cutoff.test.cv20 <- auc.test.cv20$thresholds[indx.cv20.test]
-
 
 cat("=== Optimal Thresholds ===\n")
 cat("CV10 - Train cutoff:", cutoff.train.cv10, "\n")
@@ -306,6 +311,11 @@ cat("=== CV10 Test ===\n"); sn.sp(conf.mat.test.cv10)
 cat("=== CV20 Train ===\n"); sn.sp(conf.mat.train.cv20)
 cat("=== CV20 Test ===\n"); sn.sp(conf.mat.test.cv20)
 
+# McNemar's test to formally compare CV10 vs CV20 classification decisions
+# Tests whether the two models make statistically different errors on the test set
+mcnemar.test(conf.mat.test.cv10, conf.mat.test.cv20) 
+
+
 # Variable selection - identify predictors selected by each model ====
 coef.cv10 <- coef(enet_cv10_model_min)[-1, 1]
 coef.cv10.nonzero <- coef.cv10[coef.cv10 != 0]
@@ -339,6 +349,36 @@ cat("=== CV10 shared predictor coefficients ===\n")
 print(coef.cv10.nonzero[shared])
 cat("=== CV20 shared predictor coefficients ===\n")
 print(coef.cv20.nonzero[shared])
+
+# Wilcoxon tests for shared cytokines to validate elastic net selection
+# Tests whether each shared cytokine differs significantly between mild and severe groups
+cat("=== Wilcoxon Tests for Shared Cytokines ===\n") 
+severity_numeric <- as.numeric(covid_dataset$Severity == "Severe") 
+wilcox_results <- data.frame() 
+for (cytokine in shared) { 
+  if (cytokine %in% colnames(covid_predictors)) { 
+    test <- wilcox.test(covid_predictors[, cytokine] ~ severity_numeric) 
+    wilcox_results <- rbind(wilcox_results, data.frame( 
+      Predictor = cytokine, 
+      W_statistic = test$statistic, 
+      p_value = round(test$p.value, 4), 
+      Significant = ifelse(test$p.value < 0.05, "Yes", "No")))
+  } 
+} 
+print(wilcox_results[order(wilcox_results$p_value), ]) 
+
+# Wilcoxon test and univariate logistic regression for age
+# Tests whether age differs significantly between mild and severe groups
+cat("=== Wilcoxon Test for Age ===\n") 
+wilcox.test(as.numeric(as.character(covid_dataset$AGE)) ~ covid_dataset$Severity) 
+
+# Univariate logistic regression for age
+# Examines direction and significance of age effect on severity
+cat("=== Univariate Logistic Regression: Age vs Severity ===\n") 
+age_model <- glm(as.numeric(covid_dataset$Severity == "Severe") ~ 
+                   as.numeric(as.character(covid_dataset$AGE)),
+                 family = "binomial") 
+summary(age_model) 
 
 # Visualize relationship between age and COVID-19 severity ====
 boxplot(as.numeric(as.character(covid_dataset$AGE)) ~ covid_dataset$Severity,
