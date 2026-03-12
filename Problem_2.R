@@ -247,17 +247,9 @@ snsp.train.cv10 <- cbind(auc.train.cv10$sensitivities, auc.train.cv10$specificit
 indx.cv10 <- which.max(apply(snsp.train.cv10, 1, min))
 cutoff.train.cv10 <- auc.train.cv10$thresholds[indx.cv10]
 
-snsp.test.cv10 <- cbind(auc.test.cv10$sensitivities, auc.test.cv10$specificities)
-indx.cv10.test <- which.max(apply(snsp.test.cv10, 1, min))
-cutoff.test.cv10 <- auc.test.cv10$thresholds[indx.cv10.test]
-
 snsp.train.cv20 <- cbind(auc.train.cv20$sensitivities, auc.train.cv20$specificities)
 indx.cv20 <- which.max(apply(snsp.train.cv20, 1, min))
 cutoff.train.cv20 <- auc.train.cv20$thresholds[indx.cv20]
-
-snsp.test.cv20 <- cbind(auc.test.cv20$sensitivities, auc.test.cv20$specificities)
-indx.cv20.test <- which.max(apply(snsp.test.cv20, 1, min))
-cutoff.test.cv20 <- auc.test.cv20$thresholds[indx.cv20.test]
 
 cat("=== Optimal Thresholds ===\n")
 cat("CV10 - Train cutoff:", cutoff.train.cv10, "\n")
