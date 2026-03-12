@@ -30,6 +30,10 @@ sum(is.na(a1data))
 # Summary statistics
 summary(a1data)
 
+# Correlation matrix of genes
+gene_cor <- cor(a1data)
+dim(gene_cor)
+
 #####Plot based visualizations#####
 # Boxplot of dataset, looking for outliers and large shifts in expression levels
 boxplot(a1data,
@@ -42,6 +46,11 @@ boxplot(a1data,
 heatmap(as.matrix(a1data),
         scale = "row",
         col = colorRampPalette(c("blue","white","red"))(100))
+
+# Gene correlation heatmap
+heatmap(gene_cor,
+        col = colorRampPalette(c("blue","white","red"))(100),
+        main = "Gene Correlation Heatmap")
 
 # Sample correlation heatmap, showing whether subjects affect expression patterns
 sample_cor <- cor(t(a1data))
@@ -89,6 +98,10 @@ var_explained[1:10]
 # Cumulative variance
 cumsum(var_explained)[1:10]
 
+# Print cumulative variance
+round(var_explained[1:5] * 100, 2)
+round(cumsum(var_explained[1:5]) * 100, 2)
+
 #####Scree Plot#####
 plot(var_explained,
      type = "b",
@@ -96,6 +109,13 @@ plot(var_explained,
      ylab = "Variance Explained",
      main = "Scree Plot")
 
+cumulative_var <- cumsum(var_explained)
+
+plot(cumulative_var[1:10],
+     type="b",
+     xlab="Principal Component",
+     ylab="Cumulative Variance Explained",
+     main="Cumulative Variance Explained")
 ####PCA Plots####
 #####Prepare PCA Data#####
 sample_pca <- data.frame(
@@ -135,4 +155,3 @@ ggplot(gene_pca, aes(PC1, PC2)) +
   geom_text(data=top_genes, aes(label=Gene), color="red") +
   theme_minimal() +
   labs(title = "PCA of Top contributing genes")
-
