@@ -1,11 +1,10 @@
 #TO DO:
-# DO some EDA
 #Do we need to do quadratic effects?
 # ======
 
 # Load necessary libraries ====
 library(boot)
-library(ggplot2)
+library(tidyverse)
 library(rpart)
 library(randomForest)
 library(caret)
@@ -18,6 +17,10 @@ library(readxl)
 library(lars)
 library(glmnet)
 library(plotly)
+library(DataExplorer)
+library(skimr)
+library(dplyr)
+
 
 set.seed(1717)  # For reproducibility
 
@@ -43,7 +46,88 @@ cat("Dataset dimensions:", dim(covid_dataset), "\n")
 cat("Number of predictors:", ncol(covid_predictors), "\n")
 cat("Number of observations:", length(covid_response), "\n")
 
-#Splitting the data into training (75%) and testing (25%) - using stratified sampling 
+# Exploratory data analysis 
+# Dataset overview ===
+class(covid_dataset)
+summary(covid_dataset)
+skimr::skim(covid_dataset)
+
+# Overview of dataset structure, variable types, and completeness.
+plot_intro(covid_dataset)
+
+# Severity distribution (response variable) ===
+covid_dataset %>%
+  dplyr::count(Severity, name = "count") %>%
+  arrange(desc(count))
+
+ggplot(covid_dataset, aes(x = Severity, fill = Severity)) +
+  geom_bar(colour = "black", alpha = 0.8) +
+  labs(title = "Distribution of COVID-19 severity",
+       x = "Severity", y = "Count") +
+  theme_minimal() +
+  theme(legend.position = "none")
+# Check class balance — imbalanced classes could bias model toward majority class.
+# If severe:mild ratio is very unequal, worth noting in discussion.
+
+# Age distribution ===
+covid_dataset <- covid_dataset %>%
+  mutate(AGE = as.numeric(as.character(AGE)))
+
+ggplot(covid_dataset, aes(x = AGE)) +
+  geom_histogram(fill = "lightblue", colour = "black", bins = 15) +
+  labs(title = "Distribution of patient age",
+       x = "Age (years)", y = "Frequency") +
+  theme_minimal()
+
+ggplot(covid_dataset, aes(x = Severity, y = AGE, fill = Severity)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Age distribution by COVID-19 severity",
+       x = "Severity", y = "Age (years)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+# Expected older patients skewing toward severe — results inconsistent with clinical literature.
+
+# Cytokine distributions (numeric predictors) ===
+# Visualize all numeric predictor distributions to identify skew and outliers.
+# Cytokine data is typically right-skewed (most values near zero, rare extreme responses).
+plot_histogram(covid_metrics)
+# Most cytokines have show heavy right skew, glmnet handles this reasonably
+
+# Cytokine distributions by severity ===
+# Reshape to long format for faceted plots
+covid_long <- covid_metrics %>%
+  mutate(Severity = covid_dataset$Severity) %>%
+  pivot_longer(cols = -c(Severity, AGE, SEX),
+               names_to = "cytokine",
+               values_to = "value")
+
+# Faceted boxplots: one panel per cytokine, split by severity
+ggplot(covid_long, aes(x = Severity, y = value, fill = Severity)) +
+  geom_boxplot(alpha = 0.7, outlier.size = 0.8) +
+  facet_wrap(~ cytokine, scales = "free_y") +
+  labs(title = "Cytokine levels by COVID-19 severity",
+       x = "Severity", y = "Concentration") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 7),
+        strip.text = element_text(size = 7))
+# Look for cytokines with visually clear separation between mild/severe —
+# these are likely candidates for elastic-net selection.
+
+# Correlation among predictors ===
+# High inter-cytokine correlation is biologically expected (co-regulated pathways).
+# Elastic-net handles multicollinearity well, but useful to visualise.
+plot_correlation(covid_metrics, type = "continuous")
+# Dense correlation clusters suggest groups of co-regulated cytokines.
+# Ridge component of elastic-net will distribute weight across correlated predictors.
+
+# Outlier check ===
+# Flag any extreme values that could disproportionately influence the model.
+plot_boxplot(covid_metrics %>% mutate(Severity = covid_dataset$Severity),
+             by = "Severity")
+
+# Data Splitting ----
+# Splitting the data into training (75%) and testing (25%) - using stratified sampling 
 train_index <- createDataPartition(covid_response, p = 0.75, list = FALSE)
 predictors_train <- covid_predictors[train_index, ]
 predictors_test <- covid_predictors[-train_index, ]
@@ -84,8 +168,7 @@ for (alpha_val in alpha_grid) {
     cvm_1se = cv_model$cvm[which(cv_model$lambda == cv_model$lambda.1se)],
     nzero_min = cv_model$nzero[which(cv_model$lambda == cv_model$lambda.min)],
     nzero_1se = cv_model$nzero[which(cv_model$lambda == cv_model$lambda.1se)]
-  ))
-}
+  ))}
 
 # Perform grid search for CV fold 20 ====
 for (alpha_val in alpha_grid) {
