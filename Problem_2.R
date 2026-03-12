@@ -346,7 +346,3 @@ boxplot(as.numeric(as.character(covid_dataset$AGE)) ~ covid_dataset$Severity,
         xlab = "Severity",
         ylab = "Age",
         col = c("lightblue", "lightyellow"))
-
-
-
-
