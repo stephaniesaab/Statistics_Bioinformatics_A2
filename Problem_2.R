@@ -171,7 +171,7 @@ abline(v = best_alpha_min20, col = "red", lty = 2)
 par(mfrow = c(1,1))
 
 # Comparing CV10 and CV20 schemes  
-# need one representative model from each sceheme 
+# need one representative model from each scheme 
 # decided on lambda.min instead of lambda.1se, as it keeps more predictors and prioritizes accuracy over simplicity 
 
 # Extract lambda values
@@ -202,7 +202,6 @@ enet_cv20_model_min <- glmnet(predictors_train, response_train,
                               family = "binomial",
                               alpha = best_alpha_min20,
                               lambda = best_lambda_cv20)
-
 
 # CV10 predictions
 prds.train.cv10 <- predict(enet_cv10_model_min, newx = predictors_train,
@@ -235,4 +234,88 @@ cat("CV10 - Train AUC:", auc(auc.train.cv10), "\n")
 cat("CV10 - Test AUC:", auc(auc.test.cv10), "\n")
 cat("CV20 - Train AUC:", auc(auc.train.cv20), "\n")
 cat("CV20 - Test AUC:", auc(auc.test.cv20), "\n")
- #adding random line 
+
+
+snsp.train.cv10 <- cbind(auc.train.cv10$sensitivities, auc.train.cv10$specificities)
+indx.cv10 <- which.max(apply(snsp.train, 1, min))
+cutoff.train.cv10 <- auc.train.cv10$thresholds[indx]
+
+snsp.test.cv10 <- cbind(auc.test.cv10$sensitivities, auc.test.cv10$specificities)
+indx.cv10 <- which.max(apply(snsp.test, 1, min))
+cutoff.test.cv10 <- auc.test.cv10$thresholds[indx]
+
+snsp.train.cv20 <- cbind(auc.train.cv20$sensitivities, auc.train.cv20$specificities)
+indx.cv20 <- which.max(apply(snsp.train.cv20, 1, min))
+cutoff.train.cv20 <- auc.train.cv20$thresholds[indx]
+
+snsp.test.cv20 <- cbind(auc.test.cv20$sensitivities, auc.test.cv20$specificities)
+indx.cv20 <- which.max(apply(snsp.test.cv20, 1, min))
+cutoff.test.cv20 <- auc.test.cv20$thresholds[indx]
+
+
+cat("=== Optimal Thresholds ===\n")
+cat("CV10 - Train cutoff:", cutoff.train.cv10, "\n")
+cat("CV10 - Test cutoff:", cutoff.test.cv10, "\n")
+cat("CV20 - Train cutoff:", cutoff.train.cv20, "\n")
+cat("CV20 - Test cutoff:", cutoff.test.cv20, "\n")
+
+# Confusion matrices (using training cutoffs applied to both train and test sets)
+conf.mat.train.cv10 <- table(y=response_train, yhat=as.numeric(prds.train.cv10 > cutoff.train.cv10))
+conf.mat.test.cv10 <- table(y=response_test, yhat=as.numeric(prds.test.cv10 > cutoff.train.cv10))
+conf.mat.train.cv20 <- table(y=response_train, yhat=as.numeric(prds.train.cv20 > cutoff.train.cv20))
+conf.mat.test.cv20 <- table(y=response_test, yhat=as.numeric(prds.test.cv20 > cutoff.train.cv20))
+
+# Sensitivity, specificity, accuracy function
+sn.sp <- function(mat){
+  sn <- mat[2,2]/sum(mat[2,])
+  sp <- mat[1,1]/sum(mat[1,])
+  acc <- (mat[1,1] + mat[2,2])/sum(mat)
+  return(unlist(list(sensitivity=sn, specificity=sp, accuracy=acc)))
+}
+
+# Print results
+cat("=== CV10 Train ===\n"); sn.sp(conf.mat.train.cv10)
+cat("=== CV10 Test ===\n"); sn.sp(conf.mat.test.cv10)
+cat("=== CV20 Train ===\n"); sn.sp(conf.mat.train.cv20)
+cat("=== CV20 Test ===\n"); sn.sp(conf.mat.test.cv20)
+
+# Extract coefficients for CV10
+coef.cv10 <- coef(enet_cv10_model_min)[-1, 1]
+coef.cv10.nonzero <- coef.cv10[coef.cv10 != 0]
+
+# Rank by absolute value
+coef.cv10.ranked <- sort(abs(coef.cv10.nonzero), decreasing = TRUE)
+
+# Print results
+cat("=== CV10 Selected Predictors ===\n")
+print(coef.cv10.ranked)
+cat("Number of predictors selected:", length(coef.cv10.ranked), "\n")
+
+
+# Extract coefficients for CV20
+coef.cv20 <- coef(enet_cv20_model_min)[-1, 1]
+coef.cv20.nonzero <- coef.cv20[coef.cv20 != 0]
+
+# Rank by absolute value
+coef.cv20.ranked <- sort(abs(coef.cv20.nonzero), decreasing = TRUE)
+
+# Print results
+cat("=== CV20 Selected Predictors ===\n")
+print(coef.cv20.ranked)
+cat("Number of predictors selected:", length(coef.cv20.ranked), "\n")
+
+# Cytokines selected by both models
+shared <- intersect(names(coef.cv10.nonzero), names(coef.cv20.nonzero))
+cat("=== Cytokines selected by both models ===\n")
+print(shared)
+
+cat("=== CV10 shared predictor coefficients ===\n")
+print(coef.cv10.nonzero[shared])
+cat("=== CV20 shared predictor coefficients ===\n")
+print(coef.cv20.nonzero[shared])
+
+
+
+
+
+
