@@ -216,7 +216,7 @@ prds.test.cv20 <- predict(enet_cv20_model_min, newx = predictors_test,
                           type = "response")[,1]
 
 
-# ROC curves and AUC
+# ROC CURVES 
 auc.train.cv10 <- roc(response_train, prds.train.cv10)
 auc.test.cv10 <- roc(response_test, prds.test.cv10)
 auc.train.cv20 <- roc(response_train, prds.train.cv20)
@@ -235,22 +235,23 @@ cat("CV10 - Test AUC:", auc(auc.test.cv10), "\n")
 cat("CV20 - Train AUC:", auc(auc.train.cv20), "\n")
 cat("CV20 - Test AUC:", auc(auc.test.cv20), "\n")
 
-
+# Calculate optimal classification threshold using min-max approach ====
+# Finds threshold that maximises the minimum of sensitivity and specificity
 snsp.train.cv10 <- cbind(auc.train.cv10$sensitivities, auc.train.cv10$specificities)
-indx.cv10 <- which.max(apply(snsp.train, 1, min))
-cutoff.train.cv10 <- auc.train.cv10$thresholds[indx]
+indx.cv10 <- which.max(apply(snsp.train.cv10, 1, min))
+cutoff.train.cv10 <- auc.train.cv10$thresholds[indx.cv10]
 
 snsp.test.cv10 <- cbind(auc.test.cv10$sensitivities, auc.test.cv10$specificities)
-indx.cv10 <- which.max(apply(snsp.test, 1, min))
-cutoff.test.cv10 <- auc.test.cv10$thresholds[indx]
+indx.cv10.test <- which.max(apply(snsp.test.cv10, 1, min))
+cutoff.test.cv10 <- auc.test.cv10$thresholds[indx.cv10.test]
 
 snsp.train.cv20 <- cbind(auc.train.cv20$sensitivities, auc.train.cv20$specificities)
 indx.cv20 <- which.max(apply(snsp.train.cv20, 1, min))
-cutoff.train.cv20 <- auc.train.cv20$thresholds[indx]
+cutoff.train.cv20 <- auc.train.cv20$thresholds[indx.cv20]
 
 snsp.test.cv20 <- cbind(auc.test.cv20$sensitivities, auc.test.cv20$specificities)
-indx.cv20 <- which.max(apply(snsp.test.cv20, 1, min))
-cutoff.test.cv20 <- auc.test.cv20$thresholds[indx]
+indx.cv20.test <- which.max(apply(snsp.test.cv20, 1, min))
+cutoff.test.cv20 <- auc.test.cv20$thresholds[indx.cv20.test]
 
 
 cat("=== Optimal Thresholds ===\n")
@@ -259,7 +260,33 @@ cat("CV10 - Test cutoff:", cutoff.test.cv10, "\n")
 cat("CV20 - Train cutoff:", cutoff.train.cv20, "\n")
 cat("CV20 - Test cutoff:", cutoff.test.cv20, "\n")
 
-# Confusion matrices (using training cutoffs applied to both train and test sets)
+# Visualize ROC curves with optimal threshold marked (blue dotted lines) ====
+par(mfrow = c(2,2))
+
+plot(auc.train.cv10, main = "CV10 - Train")
+abline(h = snsp.train.cv10[indx.cv10, 1], 
+       v = snsp.train.cv10[indx.cv10, 2], 
+       col = 'blue', lty = 2)
+
+plot(auc.test.cv10, main = "CV10 - Test")
+abline(h = snsp.test.cv10[indx.cv10.test, 1], 
+       v = snsp.test.cv10[indx.cv10.test, 2], 
+       col = 'blue', lty = 2)
+
+plot(auc.train.cv20, main = "CV20 - Train")
+abline(h = snsp.train.cv20[indx.cv20, 1], 
+       v = snsp.train.cv20[indx.cv20, 2], 
+       col = 'blue', lty = 2)
+
+plot(auc.test.cv20, main = "CV20 - Test")
+abline(h = snsp.test.cv20[indx.cv20.test, 1], 
+       v = snsp.test.cv20[indx.cv20.test, 2], 
+       col = 'blue', lty = 2)
+
+par(mfrow = c(1,1))
+
+# Evaluate model performance at optimal threshold ====
+# Using training cutoff applied to both train and test sets
 conf.mat.train.cv10 <- table(y=response_train, yhat=as.numeric(prds.train.cv10 > cutoff.train.cv10))
 conf.mat.test.cv10 <- table(y=response_test, yhat=as.numeric(prds.test.cv10 > cutoff.train.cv10))
 conf.mat.train.cv20 <- table(y=response_train, yhat=as.numeric(prds.train.cv20 > cutoff.train.cv20))
@@ -279,42 +306,46 @@ cat("=== CV10 Test ===\n"); sn.sp(conf.mat.test.cv10)
 cat("=== CV20 Train ===\n"); sn.sp(conf.mat.train.cv20)
 cat("=== CV20 Test ===\n"); sn.sp(conf.mat.test.cv20)
 
-# Extract coefficients for CV10
+# Variable selection - identify predictors selected by each model ====
 coef.cv10 <- coef(enet_cv10_model_min)[-1, 1]
 coef.cv10.nonzero <- coef.cv10[coef.cv10 != 0]
 
 # Rank by absolute value
 coef.cv10.ranked <- sort(abs(coef.cv10.nonzero), decreasing = TRUE)
 
-# Print results
 cat("=== CV10 Selected Predictors ===\n")
 print(coef.cv10.ranked)
 cat("Number of predictors selected:", length(coef.cv10.ranked), "\n")
 
-
-# Extract coefficients for CV20
+# CV20 variable selection ====
 coef.cv20 <- coef(enet_cv20_model_min)[-1, 1]
 coef.cv20.nonzero <- coef.cv20[coef.cv20 != 0]
 
 # Rank by absolute value
 coef.cv20.ranked <- sort(abs(coef.cv20.nonzero), decreasing = TRUE)
 
-# Print results
 cat("=== CV20 Selected Predictors ===\n")
 print(coef.cv20.ranked)
 cat("Number of predictors selected:", length(coef.cv20.ranked), "\n")
 
-# Cytokines selected by both models
+# Compare predictor selection between CV10 and CV20 models ====
 shared <- intersect(names(coef.cv10.nonzero), names(coef.cv20.nonzero))
 cat("=== Cytokines selected by both models ===\n")
 print(shared)
 
+# Examine direction and magnitude of shared predictors ====
+# Positive coefficient = associated with severe, negative = associated with mild
 cat("=== CV10 shared predictor coefficients ===\n")
 print(coef.cv10.nonzero[shared])
 cat("=== CV20 shared predictor coefficients ===\n")
 print(coef.cv20.nonzero[shared])
 
-
+# Visualize relationship between age and COVID-19 severity ====
+boxplot(as.numeric(as.character(covid_dataset$AGE)) ~ covid_dataset$Severity,
+        main = "Age vs COVID-19 Severity",
+        xlab = "Severity",
+        ylab = "Age",
+        col = c("lightblue", "lightyellow"))
 
 
 
