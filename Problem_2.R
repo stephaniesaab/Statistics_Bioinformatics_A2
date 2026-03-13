@@ -336,9 +336,7 @@ cutoff.train.cv20 <- auc.train.cv20$thresholds[indx.cv20]
 
 cat("=== Optimal Thresholds ===\n")
 cat("CV10 - Train cutoff:", cutoff.train.cv10, "\n")
-cat("CV10 - Test cutoff:", cutoff.test.cv10, "\n")
 cat("CV20 - Train cutoff:", cutoff.train.cv20, "\n")
-cat("CV20 - Test cutoff:", cutoff.test.cv20, "\n")
 
 # Visualize ROC curves with optimal threshold marked (blue dotted lines) ====
 par(mfrow = c(2,2))
