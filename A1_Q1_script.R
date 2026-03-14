@@ -73,8 +73,16 @@ cell_type <- sapply(split_names, "[", 2)
 # Create metadata dataframe
 metadata <- data.frame(
   Subject = subject_status,
-  CellType = cell_type
+  CellType = cell_type,
+  
 )
+
+# Create a "Status" column in our metadata dataframe
+metadata$Status <- ifelse(grepl("^HEA", metadata$Subject),
+                                 "Healthy",
+                                 "Melanoma")
+
+DiseaseStatus <- metadata$Status
 
 head(metadata)
 
@@ -132,8 +140,8 @@ gene_pca <- data.frame(
 )
 
 #####PCA Plot of Samples#####
-ggplot(sample_pca, aes(PC1, PC2, color = CellType)) +
-  geom_point(size = 3) +
+ggplot(sample_pca, aes(PC1, PC2, color = CellType, shape = DiseaseStatus)) +
+  geom_point(size = 4, alpha = 0.8) +
   theme_minimal() +
   labs(title = "PCA of Samples",
        x = "PC1",
