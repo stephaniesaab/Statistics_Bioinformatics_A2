@@ -149,8 +149,8 @@ ggplot(sample_pca, aes(PC1, PC2, color = CellType, shape = DiseaseStatus)) +
   geom_point(size = 4, alpha = 0.8) +
   theme_minimal() +
   labs(title = "PCA of Samples",
-       x = "PC1",
-       y = "PC2") + 
+       x = paste0("PC1 (", round(var_explained[1] * 100, 2), "%)"),
+       y = paste0("PC2 (", round(var_explained[2] * 100, 2), "%)")) + 
   theme(plot.title = element_text(size = 25, face = "bold"))
 
 #####PCA Plot of Genes#####
@@ -158,8 +158,8 @@ ggplot(gene_pca, aes(PC1, PC2)) +
   geom_point(color = "darkred") +
   theme_minimal() +
   labs(title = "PCA of Genes (Loadings)",
-       x = "PC1",
-       y = "PC2") +
+       x = paste0("PC1 (", round(var_explained[1] * 100, 2), "%)"),
+       y = paste0("PC2 (", round(var_explained[2] * 100, 2), "%)")) +
   theme(plot.title = element_text(size = 25, face = "bold"))
 
 #####Label top contributing genes in the PCA#####
