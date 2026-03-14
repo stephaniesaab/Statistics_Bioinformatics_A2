@@ -1,6 +1,5 @@
-#TO DO:
-#Do we need to do quadratic effects?
-# ======
+#Assignment 2 for BINF6970:
+#Predicting COVID-19 case severity (Mild or Severe) using cytokines and age as predictors
 
 # Load necessary libraries ====
 library(boot)
